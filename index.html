@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Sequence Batch Exporter</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 10px;
+    background: #232323; color: #d6d6d6;
+    font-family: "Segoe UI", sans-serif; font-size: 12px;
+  }
+  h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em;
+       color: #9a9a9a; margin: 14px 0 6px; }
+  h2:first-child { margin-top: 0; }
+  button {
+    background: #3a3a3a; color: #d6d6d6; border: 1px solid #555;
+    border-radius: 3px; padding: 4px 10px; cursor: pointer; font-size: 12px;
+  }
+  button:hover { background: #4a4a4a; }
+  button.primary { background: #2d6bcf; border-color: #2d6bcf; color: #fff; font-weight: 600; }
+  button.primary:hover { background: #3c7ade; }
+  button.small { padding: 1px 7px; font-size: 11px; }
+  input[type=text], select {
+    background: #1b1b1b; color: #d6d6d6; border: 1px solid #555;
+    border-radius: 3px; padding: 3px 6px; font-size: 12px;
+  }
+  .row { display: flex; gap: 6px; align-items: center; margin: 4px 0; }
+  .grow { flex: 1 1 auto; min-width: 0; }
+  #seqList { max-height: 160px; overflow-y: auto; border: 1px solid #444;
+             border-radius: 3px; padding: 4px 6px; background: #1b1b1b; }
+  #seqList label { display: block; padding: 2px 0; white-space: nowrap;
+                   overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+  .output-row { display: flex; gap: 6px; align-items: center; margin: 3px 0;
+                background: #2b2b2b; border-radius: 3px; padding: 4px 6px; }
+  .output-row .preset-name { flex: 1 1 auto; min-width: 0; white-space: nowrap;
+                             overflow: hidden; text-overflow: ellipsis; }
+  .output-row input.ext { width: 48px; }
+  .output-row input.suffix { width: 70px; }
+  .muted { color: #8a8a8a; }
+  #log { margin-top: 8px; max-height: 140px; overflow-y: auto; background: #1b1b1b;
+         border: 1px solid #444; border-radius: 3px; padding: 5px 7px;
+         font-family: Consolas, monospace; font-size: 11px; white-space: pre-wrap; }
+  #log .ok { color: #7fc97f; }
+  #log .err { color: #e07a7a; }
+  .checkline { display: flex; align-items: center; gap: 5px; margin: 4px 0; }
+
+  /* preset picker overlay */
+  #picker { position: fixed; inset: 0; background: rgba(20,20,20,.96);
+            padding: 10px; display: none; flex-direction: column; z-index: 10; }
+  #picker.open { display: flex; }
+  #pickerList { flex: 1 1 auto; overflow-y: auto; border: 1px solid #444;
+                border-radius: 3px; background: #1b1b1b; margin-top: 6px; }
+  .pick-row { display: flex; align-items: center; gap: 6px; padding: 3px 8px; cursor: pointer; }
+  .pick-row:hover { background: #333; }
+  .pick-row .star { cursor: pointer; color: #666; width: 14px; flex: 0 0 auto; }
+  .pick-row .star.fav { color: #e8b93e; }
+  .pick-row .pname { flex: 1 1 auto; min-width: 0; white-space: nowrap;
+                     overflow: hidden; text-overflow: ellipsis; }
+  .pick-row .badge { flex: 0 0 auto; font-size: 10px; color: #8ab4e8; }
+  .pick-row .pcat { flex: 0 1 auto; font-size: 10px; color: #777; white-space: nowrap;
+                    overflow: hidden; text-overflow: ellipsis; max-width: 40%; }
+  .pick-head { padding: 4px 8px; font-size: 10px; text-transform: uppercase;
+               letter-spacing: .06em; color: #8a8a8a; background: #262626;
+               position: sticky; top: 0; }
+</style>
+</head>
+<body>
+
+<h2>Sequences <button id="btnRefresh" class="small">Refresh</button>
+    <button id="btnAll" class="small">All</button>
+    <button id="btnNone" class="small">None</button></h2>
+<div id="seqList"><span class="muted">Loading…</span></div>
+
+<h2>Delivery profile</h2>
+<div class="row">
+  <select id="profileSelect" class="grow"></select>
+  <button id="btnNewProfile" class="small">New</button>
+  <button id="btnDelProfile" class="small">Delete</button>
+</div>
+<div id="outputs"></div>
+<div class="row">
+  <button id="btnAddOutput" class="small">+ Add preset</button>
+  <span class="muted">ext / suffix editable per output</span>
+</div>
+
+<div id="picker">
+  <div class="row">
+    <input type="text" id="pickerSearch" class="grow" placeholder="Search presets… (★ favorites shown first)">
+    <button id="btnPickerClose" class="small">Close</button>
+  </div>
+  <div id="pickerList"></div>
+  <div class="row">
+    <button id="btnPickerFile" class="small">From .epr file…</button>
+    <button id="btnPickerRescan" class="small">Rescan disk</button>
+    <span id="pickerCount" class="muted"></span>
+  </div>
+</div>
+
+<h2>Destination</h2>
+<div class="row">
+  <input type="text" id="outFolder" class="grow" placeholder="Output folder">
+  <button id="btnBrowse" class="small">Browse…</button>
+</div>
+<div class="row">
+  <label>Range:</label>
+  <select id="workArea">
+    <option value="0">Entire sequence</option>
+    <option value="1">In/Out points</option>
+    <option value="2">Work area bar</option>
+  </select>
+  <label class="checkline" style="margin-left:auto">
+    <input type="checkbox" id="autoStart" checked> Start queue
+  </label>
+</div>
+
+<div class="row" style="margin-top:10px">
+  <button id="btnQueue" class="primary grow">Queue exports</button>
+</div>
+<div id="log"></div>
+
+<script src="js/presets.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
