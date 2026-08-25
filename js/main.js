@@ -53,6 +53,9 @@
     return evalES("SBE_getSequences()").then(function (res) {
       try { sequences = JSON.parse(res || "[]"); }
       catch (e) { sequences = []; }
+      sequences.sort(function (a, b) {
+        return String(a.name).localeCompare(String(b.name), undefined, { numeric: true, sensitivity: "base" });
+      });
       var box = $("seqList");
       box.innerHTML = "";
       if (!sequences.length) {
