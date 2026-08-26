@@ -1,5 +1,12 @@
 # Sequence Batch Exporter
 
+[![Latest release](https://img.shields.io/github/v/release/tro2789/SequenceBatchExporter)](https://github.com/tro2789/SequenceBatchExporter/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/tro2789/SequenceBatchExporter/total)](https://github.com/tro2789/SequenceBatchExporter/releases)
+[![License: MIT](https://img.shields.io/github/license/tro2789/SequenceBatchExporter)](LICENSE)
+![Platform: Windows](https://img.shields.io/badge/platform-Windows-0078d4)
+![Premiere Pro 22.0+](https://img.shields.io/badge/Premiere%20Pro-22.0%2B-9999ff)
+[![Buy me a coffee](https://img.shields.io/badge/%E2%98%95%20buy%20me%20a%20coffee-tip-ffdd00)](https://buy.stripe.com/28EcN5b5Scjw906091bwk0e)
+
 CEP panel for Premiere Pro: queue N sequences × M export presets to Adobe Media
 Encoder in one click. Built for the podcast delivery case (same cut → MP4 +
 MP3), unlike track-permutation exporters.
@@ -90,3 +97,9 @@ Notes:
 - Jobs are queued with `removeOnCompletion=0` so they stay visible in AME.
 - If a queue job errors with "preset not found", the `.epr` path moved —
   re-add it in the profile.
+
+## Support
+
+Sequence Batch Exporter is free and stays free. If it saves you an export
+afternoon, you can
+[buy me a coffee](https://buy.stripe.com/28EcN5b5Scjw906091bwk0e).
