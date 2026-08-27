@@ -128,7 +128,7 @@
       var suffix = document.createElement("input");
       suffix.type = "text"; suffix.className = "suffix"; suffix.value = o.suffix || "";
       suffix.placeholder = "suffix";
-      suffix.title = "Appended to sequence name";
+      suffix.title = "Appended to sequence name as _suffix (underscore added automatically)";
       suffix.onchange = function () { o.suffix = suffix.value; save(); };
 
       var del = document.createElement("button");
@@ -175,7 +175,8 @@
     for (var i = 0; i < seqs.length; i++) {
       for (var j = 0; j < prof.outputs.length; j++) {
         var o = prof.outputs[j];
-        var outPath = folder + "\\" + sanitize(seqs[i].name) + (o.suffix || "") + "." + o.ext;
+        var sfx = o.suffix ? (/^[_-]/.test(o.suffix) ? o.suffix : "_" + o.suffix) : "";
+        var outPath = folder + "\\" + sanitize(seqs[i].name) + sfx + "." + o.ext;
         var call = "SBE_queueOne(\"" + esc(seqs[i].id) + "\",\"" + esc(outPath) +
                    "\",\"" + esc(o.preset) + "\",\"" + esc(workArea) + "\")";
         var res = await evalES(call);

@@ -45,7 +45,9 @@ Re-run after any code change, then restart Premiere.
 3. **Destination** — output folder (defaults to the project folder), range
    (entire / in-out / work area), and whether to auto-start the AME queue.
 4. **Queue exports** — fires `app.encoder.encodeSequence()` per sequence ×
-   output. Output name is `<sequence name><suffix>.<ext>`.
+   output. Output name is `<sequence name>_<suffix>.<ext>` (the underscore is
+   added automatically; a suffix that already starts with `_` or `-` is used
+   as-is).
 
 ## Distribution (signed .zxp)
 
