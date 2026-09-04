@@ -26,7 +26,7 @@
   /* ---------- state ---------- */
 
   var STORE_KEY = "sbe_state_v1";
-  var state = { profiles: [], activeProfile: 0, outFolder: "", workArea: "0", autoStart: true };
+  var state = { profiles: [], activeProfile: 0, outFolder: "", workArea: "0", autoStart: true, importAfter: false };
   var sequences = [];
 
   function load() {
@@ -44,6 +44,7 @@
     state.outFolder = $("outFolder").value;
     state.workArea = $("workArea").value;
     state.autoStart = $("autoStart").checked;
+    state.importAfter = $("importAfter").checked;
     localStorage.setItem(STORE_KEY, JSON.stringify(state));
   }
 
@@ -76,6 +77,29 @@
   function setAll(checked) {
     $("seqList").querySelectorAll("input[type=checkbox]").forEach(function (cb) {
       cb.checked = checked;
+    });
+  }
+  function selectFromProjectPanel() {
+    return evalES("SBE_getSelectedSequenceIDs()").then(function (res) {
+      var ids = [];
+      try { ids = JSON.parse(res || "[]"); } catch (e) { ids = []; }
+      if (!ids.length) {
+        log("No sequences highlighted in the Project panel.", "err");
+        return;
+      }
+      var missing = ids.filter(function (id) {
+        return !sequences.some(function (s) { return s.id === id; });
+      });
+      var apply = function () {
+        var n = 0;
+        $("seqList").querySelectorAll("input[type=checkbox]").forEach(function (cb) {
+          cb.checked = ids.indexOf(cb.value) >= 0;
+          if (cb.checked) n++;
+        });
+        log("Selected " + n + " sequence" + (n === 1 ? "" : "s") + " from the Project panel.");
+      };
+      // A newly created sequence may not be in the list yet; refresh first.
+      return missing.length ? refreshSequences().then(apply) : apply();
     });
   }
   function selectedSequences() {
@@ -162,6 +186,7 @@
     var prof = activeProfile();
     var folder = $("outFolder").value.replace(/[\\\/]+$/, "");
     var workArea = $("workArea").value;
+    var importAfter = $("importAfter").checked ? "1" : "0";
 
     if (!seqs.length) { log("Select at least one sequence.", "err"); return; }
     if (!prof.outputs.length) { log("Profile has no outputs.", "err"); return; }
@@ -178,7 +203,7 @@
         var sfx = o.suffix ? (/^[_-]/.test(o.suffix) ? o.suffix : "_" + o.suffix) : "";
         var outPath = folder + "\\" + sanitize(seqs[i].name) + sfx + "." + o.ext;
         var call = "SBE_queueOne(\"" + esc(seqs[i].id) + "\",\"" + esc(outPath) +
-                   "\",\"" + esc(o.preset) + "\",\"" + esc(workArea) + "\")";
+                   "\",\"" + esc(o.preset) + "\",\"" + esc(workArea) + "\",\"" + importAfter + "\")";
         var res = await evalES(call);
         if (res && res.indexOf("ok:") === 0) {
           log("✓ " + baseName(outPath), "ok");
@@ -189,6 +214,8 @@
       }
     }
 
+    if (importAfter === "1") watchImports();
+
     if (failures === 0 && $("autoStart").checked) {
       await evalES("SBE_startBatch()");
       log("Queue started in Media Encoder.", "ok");
@@ -198,6 +225,26 @@
       log("Jobs queued. Press Start in Media Encoder when ready.");
     }
     $("btnQueue").disabled = false;
+  }
+
+  /* ---------- import-on-complete watcher ---------- */
+
+  // AME completion lands in the ExtendScript engine (host.jsx); poll it for
+  // results while jobs we asked to import are still outstanding.
+  var importTimer = null;
+  function watchImports() {
+    if (importTimer) return;
+    importTimer = setInterval(function () {
+      evalES("SBE_drainEvents()").then(function (res) {
+        var r;
+        try { r = JSON.parse(res || "{}"); } catch (e) { r = {}; }
+        (r.events || []).forEach(function (ev) {
+          if (ev.indexOf("ok:") === 0) log("↳ Imported " + ev.slice(3), "ok");
+          else log("↳ Import failed: " + ev.replace(/^err:/, ""), "err");
+        });
+        if (!r.pending) { clearInterval(importTimer); importTimer = null; }
+      });
+    }, 3000);
   }
 
   /* ---------- dialogs ---------- */
@@ -316,6 +363,7 @@
   $("btnRefresh").onclick = refreshSequences;
   $("btnAll").onclick = function () { setAll(true); };
   $("btnNone").onclick = function () { setAll(false); };
+  $("btnFromProject").onclick = selectFromProjectPanel;
   $("btnBrowse").onclick = pickFolder;
   $("btnAddOutput").onclick = openPicker;
   $("btnQueue").onclick = queueAll;
@@ -356,9 +404,11 @@
   $("outFolder").value = state.outFolder || "";
   $("workArea").value = state.workArea || "0";
   $("autoStart").checked = state.autoStart !== false;
+  $("importAfter").checked = !!state.importAfter;
   $("outFolder").onchange = save;
   $("workArea").onchange = save;
   $("autoStart").onchange = save;
+  $("importAfter").onchange = save;
   renderProfiles();
   refreshSequences().then(function () {
     if (!$("outFolder").value) {

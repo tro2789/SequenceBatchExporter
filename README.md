@@ -31,6 +31,8 @@ Re-run after any code change, then restart Premiere.
 ## Usage
 
 1. **Sequences** — check the sequences to export (Refresh after adding new ones).
+   **From Project panel** checks whatever sequences are currently highlighted in
+   Premiere's Project panel, so you can multi-select there and pull them in.
 2. **Delivery profile** — a named bundle of outputs. Each output is a preset +
    file extension + optional filename suffix. Profiles persist in the panel's
    localStorage.
@@ -43,7 +45,10 @@ Re-run after any code change, then restart Premiere.
      persist. "Rescan disk" refreshes the cached scan; "From .epr file…" is
      still there for one-off preset files.
 3. **Destination** — output folder (defaults to the project folder), range
-   (entire / in-out / work area), and whether to auto-start the AME queue.
+   (entire / in-out / work area), whether to auto-start the AME queue, and
+   **Import into project**: the same toggle as Premiere's Export page. Each
+   finished file is imported into the project root as AME completes it (the
+   panel logs each import; keep the panel open until the queue finishes).
 4. **Queue exports** — fires `app.encoder.encodeSequence()` per sequence ×
    output. Output name is `<sequence name>_<suffix>.<ext>` (the underscore is
    added automatically; a suffix that already starts with `_` or `-` is used

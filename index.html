@@ -70,7 +70,8 @@
 
 <h2>Sequences <button id="btnRefresh" class="small">Refresh</button>
     <button id="btnAll" class="small">All</button>
-    <button id="btnNone" class="small">None</button></h2>
+    <button id="btnNone" class="small">None</button>
+    <button id="btnFromProject" class="small" title="Check the sequences currently highlighted in the Project panel">From Project panel</button></h2>
 <div id="seqList"><span class="muted">Loading…</span></div>
 
 <h2>Delivery profile</h2>
@@ -112,6 +113,11 @@
   </select>
   <label class="checkline" style="margin-left:auto">
     <input type="checkbox" id="autoStart" checked> Start queue
+  </label>
+</div>
+<div class="row">
+  <label class="checkline" title="Import each finished file into the project root (panel must stay open until AME finishes)">
+    <input type="checkbox" id="importAfter"> Import into project
   </label>
 </div>
 

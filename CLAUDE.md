@@ -29,6 +29,25 @@ Queue path: `SBE_queueOne` → `app.encoder.launchEncoder()` →
 sequences are matched by `sequenceID` (GUID). Jobs are fired sequentially
 (await each) to avoid racing AME startup, then `SBE_startBatch()` if enabled.
 
+Import-into-project (v1.2.0): `SBE_queueOne` takes a 5th arg `importFlag`.
+When "1", host.jsx binds `app.encoder` events once (`onEncoderJobComplete`
+/ `onEncoderJobError` / `onEncoderJobCanceled` — same pattern as Adobe's
+PProPanel sample) and records `jobId -> outPath` in `SBE_pendingImports`.
+On completion it calls `app.project.importFiles([path], true, rootItem, false)`
+using the path AME reports (AME may rename on collision) and pushes
+"ok:<file>" / "err:<file> - reason" into `SBE_events`. The panel polls
+`SBE_drainEvents()` every 3s (`watchImports`) until `pending` hits 0 and logs
+each result. Callbacks only fire while the panel (its ExtendScript engine) is
+open.
+
+"From Project panel" button: `SBE_getSelectedSequenceIDs()` reads
+`app.getCurrentProjectViewSelection()` (verified on 26.x), matches each item's
+`nodeId` against `Sequence.projectItem.nodeId`, and returns sequenceIDs; the
+panel refreshes the list first if any ID is unknown. Selection reflects the
+most recently focused Project view and is empty when focus is on the timeline.
+CEP cannot add native context-menu entries or receive Project-panel drags,
+so this button is the ceiling for "use what's highlighted".
+
 ## Preset scanning (js/presets.js) — hard-won facts
 
 - System presets: `C:\Program Files\Adobe\Adobe Premiere Pro <year>\MediaIO\systempresets`
