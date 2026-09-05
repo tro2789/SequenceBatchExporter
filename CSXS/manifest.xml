@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ExtensionManifest Version="7.0" ExtensionBundleId="com.tohare.seqbatchexport"
-    ExtensionBundleVersion="1.2.0" ExtensionBundleName="Sequence Batch Exporter"
+    ExtensionBundleVersion="1.2.1" ExtensionBundleName="Sequence Batch Exporter"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <ExtensionList>
-    <Extension Id="com.tohare.seqbatchexport.panel" Version="1.2.0"/>
+    <Extension Id="com.tohare.seqbatchexport.panel" Version="1.2.1"/>
   </ExtensionList>
   <ExecutionEnvironment>
     <HostList>

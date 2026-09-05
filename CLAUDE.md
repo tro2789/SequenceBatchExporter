@@ -9,10 +9,14 @@ the working knowledge for development.
 Two runtimes, one bridge:
 
 - **Panel (Chromium/CEP)** — `index.html` + `js/main.js`. All UI state
-  (delivery profiles, favorites, output folder, options) lives in
-  `localStorage` under key `sbe_state_v1`; preset scan cache under
-  `sbe_presets_cache_v2`. Bump the key suffix when changing a stored shape —
-  there is no migration code.
+  (delivery profiles, favorites, output folder, options) is written to
+  `%APPDATA%\com.tohare.seqbatchexport\state.json` (via cep_node; atomic
+  tmp+rename) and mirrored to `localStorage` key `sbe_state_v1` as a fallback.
+  Do not rely on localStorage alone: CEP stores it in `%TEMP%\cep_cache`,
+  keyed by host version, so Temp cleanup, Premiere updates, and hard resets
+  all wipe it (that bug shipped in 1.0–1.2.0). Preset scan cache is still
+  `localStorage` `sbe_presets_cache_v2` (disposable). Bump the key suffix
+  when changing a stored shape — there is no migration code.
 - **ExtendScript host** — `jsx/host.jsx`, loaded via `ScriptPath` in the
   manifest. All functions are prefixed `SBE_` (other panels share the
   ExtendScript engine). Called via `window.__adobe_cep__.evalScript` (promise

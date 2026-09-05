@@ -29,11 +29,59 @@
   var state = { profiles: [], activeProfile: 0, outFolder: "", workArea: "0", autoStart: true, importAfter: false };
   var sequences = [];
 
-  function load() {
+  // State file lives under the user's roaming profile. CEP's localStorage sits in
+  // %TEMP%\cep_cache, keyed by host version, so it is wiped by Temp cleanup, lost
+  // on every Premiere update, and unflushed on hard resets. localStorage stays
+  // as a fallback when cep_node is unavailable.
+  var stateWarned = false;
+  function stateWarn(msg) {
+    if (stateWarned) return;
+    stateWarned = true;
+    log("Settings file unavailable (" + msg + "); falling back to localStorage.", "err");
+  }
+  function stateFile() {
+    var n = window.cep_node;
+    if (!n) { stateWarn("no cep_node"); return null; }
+    if (!window.__adobe_cep__) { stateWarn("no __adobe_cep__"); return null; }
     try {
-      var raw = localStorage.getItem(STORE_KEY);
-      if (raw) state = JSON.parse(raw);
-    } catch (e) { /* fresh start */ }
+      var base = window.__adobe_cep__.getSystemPath("userData");
+      if (!base) { stateWarn("empty userData path"); return null; }
+      // CEP returns a file:/// URL here, not a filesystem path.
+      base = decodeURIComponent(String(base).replace(/^file:\/\/\/?/, ""));
+      return { fs: n.require("fs"), path: n.require("path"), file: base + "/com.tohare.seqbatchexport/state.json" };
+    } catch (e) { stateWarn(String(e)); return null; }
+  }
+  function readStateFile() {
+    var f = stateFile();
+    if (!f) return null;
+    try { return JSON.parse(f.fs.readFileSync(f.file, "utf8")); } catch (e) { return null; }
+  }
+  function writeStateFile(json) {
+    var f = stateFile();
+    if (!f) return false;
+    try {
+      var dir = f.path.dirname(f.file);
+      if (!f.fs.existsSync(dir)) f.fs.mkdirSync(dir, { recursive: true });
+      var tmp = f.file + ".tmp";
+      f.fs.writeFileSync(tmp, json, "utf8");
+      f.fs.renameSync(tmp, f.file);
+      return true;
+    } catch (e) { stateWarn(String(e) + " @ " + f.file); return false; }
+  }
+
+  function load() {
+    var fromFile = readStateFile();
+    if (fromFile && fromFile.profiles) {
+      state = fromFile;
+    } else {
+      try {
+        var raw = localStorage.getItem(STORE_KEY);
+        if (raw) {
+          state = JSON.parse(raw);
+          writeStateFile(raw); // one-time migration out of cep_cache
+        }
+      } catch (e) { /* fresh start */ }
+    }
     if (!state.profiles.length) {
       state.profiles = [{ name: "Podcast", outputs: [] }];
       state.activeProfile = 0;
@@ -45,7 +93,9 @@
     state.workArea = $("workArea").value;
     state.autoStart = $("autoStart").checked;
     state.importAfter = $("importAfter").checked;
-    localStorage.setItem(STORE_KEY, JSON.stringify(state));
+    var json = JSON.stringify(state);
+    writeStateFile(json);
+    try { localStorage.setItem(STORE_KEY, json); } catch (e) { /* cache only */ }
   }
 
   /* ---------- sequences ---------- */
