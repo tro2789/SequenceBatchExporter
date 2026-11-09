@@ -87,6 +87,34 @@
       state.activeProfile = 0;
     }
     if (!state.favorites) state.favorites = [];
+    migratePresetPaths();
+  }
+
+  // Saved preset paths name a versioned install folder ("Adobe Premiere Pro
+  // 2026"). After an upgrade removes it, point them at the current install.
+  function migratePresetPaths() {
+    var fixed = 0, missing = [];
+    state.profiles.forEach(function (prof) {
+      prof.outputs.forEach(function (o) {
+        var r = SBEPresets.resolve(o.preset);
+        if (r === o.preset) return;
+        if (r) { o.preset = r; fixed++; }
+        else if (missing.indexOf(o.preset) < 0) missing.push(o.preset);
+      });
+    });
+    state.favorites = state.favorites.map(function (f) {
+      var r = SBEPresets.resolve(f);
+      if (r && r !== f) fixed++;
+      return r || f;
+    });
+    if (fixed) {
+      // Not save(): it reads the form, which load() has not filled yet.
+      var json = JSON.stringify(state);
+      writeStateFile(json);
+      try { localStorage.setItem(STORE_KEY, json); } catch (e) { /* cache only */ }
+      log("Updated " + fixed + " preset path(s) to the current Adobe install.", "ok");
+    }
+    missing.forEach(function (p) { log("Preset missing: " + p, "err"); });
   }
   function save() {
     state.outFolder = $("outFolder").value;
@@ -250,10 +278,11 @@
     for (var i = 0; i < seqs.length; i++) {
       for (var j = 0; j < prof.outputs.length; j++) {
         var o = prof.outputs[j];
+        var preset = SBEPresets.resolve(o.preset) || o.preset;
         var sfx = o.suffix ? (/^[_-]/.test(o.suffix) ? o.suffix : "_" + o.suffix) : "";
         var outPath = folder + "\\" + sanitize(seqs[i].name) + sfx + "." + o.ext;
         var call = "SBE_queueOne(\"" + esc(seqs[i].id) + "\",\"" + esc(outPath) +
-                   "\",\"" + esc(o.preset) + "\",\"" + esc(workArea) + "\",\"" + importAfter + "\")";
+                   "\",\"" + esc(preset) + "\",\"" + esc(workArea) + "\",\"" + importAfter + "\")";
         var res = await evalES(call);
         if (res && res.indexOf("ok:") === 0) {
           log("✓ " + baseName(outPath), "ok");

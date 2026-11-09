@@ -56,7 +56,17 @@ so this button is the ceiling for "use what's highlighted".
 
 - System presets: `C:\Program Files\Adobe\Adobe Premiere Pro <year>\MediaIO\systempresets`
   (~537 .epr; picks highest year installed, falls back to AME's copy). The
-  `Ingest` subfolder is deliberately skipped (ingest ≠ export presets).
+  `Ingest` subfolder is deliberately skipped (ingest ≠ export presets). A root
+  only counts if its subfolder exists: a new major install creates an empty
+  AME `27.0` Documents folder while user presets stay in `26.0`.
+- **Saved paths go stale on major upgrades.** Profiles and favorites store
+  absolute .epr paths (`...Premiere Pro 2026\...`). `SBEPresets.resolve()`
+  remaps a missing path by its tail under `systempresets\` or
+  `Adobe Media Encoder\<ver>\Presets\` onto the current roots;
+  `migratePresetPaths()` runs it on load (writes state directly, not via
+  `save()`, which reads the unfilled form) and `queueAll` runs it again per job.
+  The scan cache stores its roots and rescans when they change. (v1.2.2, after
+  2026 was uninstalled for 27.)
 - User presets: `Documents\Adobe\Adobe Media Encoder\<highest ver>\Presets`.
   Documents is OneDrive-redirected on this machine — the scanner checks both
   `%USERPROFILE%\Documents` and `%USERPROFILE%\OneDrive\Documents`.
@@ -79,8 +89,8 @@ so this button is the ceiling for "use what's highlighted".
 
 - **PowerShell scripts must stay ASCII-only.** Windows PowerShell 5.1 reads
   BOM-less files as ANSI; an em-dash once broke install.ps1 mid-string.
-- Premiere on this machine: 26.x, CEP 12; `PlayerDebugMode=1` already set for
-  CSXS.11 and .12 (HKCU). Dev copy loads from
+- Premiere on this machine: 27.x (since 2026-11-09); `PlayerDebugMode=1` is set
+  for CSXS.6 through .15 (HKCU). Dev copy loads from
   `%APPDATA%\Adobe\CEP\extensions\com.tohare.seqbatchexport`.
 - The manifest targets PPRO 22.0–99.9, CSXS runtime 9.0 — don't tighten
   without reason.

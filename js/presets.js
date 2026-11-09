@@ -72,12 +72,16 @@ var SBEPresets = (function () {
     });
   }
 
-  function latestVersionDir(fs, base, re) {
+  // Newest versioned folder under base that contains sub. A new major install
+  // creates an empty AME "27.0" folder while user presets stay in "26.0".
+  function latestVersionDir(fs, base, re, sub) {
     var best = null, bestNum = -1;
     try {
       fs.readdirSync(base).forEach(function (name) {
         var m = name.match(re);
-        if (m && parseFloat(m[1]) > bestNum) { bestNum = parseFloat(m[1]); best = base + "\\" + name; }
+        if (!m || parseFloat(m[1]) <= bestNum) return;
+        if (!fs.existsSync(base + "\\" + name + "\\" + sub)) return;
+        bestNum = parseFloat(m[1]); best = base + "\\" + name;
       });
     } catch (e) { /* base missing */ }
     return best;
@@ -86,17 +90,13 @@ var SBEPresets = (function () {
   function findRoots(fs, env) {
     var roots = [];
     var pf = "C:\\Program Files\\Adobe";
-    var app = latestVersionDir(fs, pf, /^Adobe Premiere Pro (\d{4})$/) ||
-              latestVersionDir(fs, pf, /^Adobe Media Encoder (\d{4})$/);
-    if (app && fs.existsSync(app + "\\MediaIO\\systempresets")) {
-      roots.push({ dir: app + "\\MediaIO\\systempresets", kind: "system" });
-    }
+    var app = latestVersionDir(fs, pf, /^Adobe Premiere Pro (\d{4})$/, "MediaIO\\systempresets") ||
+              latestVersionDir(fs, pf, /^Adobe Media Encoder (\d{4})$/, "MediaIO\\systempresets");
+    if (app) roots.push({ dir: app + "\\MediaIO\\systempresets", kind: "system" });
     var home = env.USERPROFILE || "";
     [home + "\\Documents", home + "\\OneDrive\\Documents"].forEach(function (docs) {
-      var ver = latestVersionDir(fs, docs + "\\Adobe\\Adobe Media Encoder", /^(\d+(?:\.\d+)?)$/);
-      if (ver && fs.existsSync(ver + "\\Presets")) {
-        roots.push({ dir: ver + "\\Presets", kind: "user" });
-      }
+      var ver = latestVersionDir(fs, docs + "\\Adobe\\Adobe Media Encoder", /^(\d+(?:\.\d+)?)$/, "Presets");
+      if (ver) roots.push({ dir: ver + "\\Presets", kind: "user" });
     });
     return roots;
   }
@@ -106,7 +106,8 @@ var SBEPresets = (function () {
     if (!nd) return { error: "Node.js unavailable in this CEP runtime", presets: [] };
     var fs = nd.require("fs");
     var presets = [];
-    findRoots(fs, nd.process.env).forEach(function (root) {
+    var roots = findRoots(fs, nd.process.env);
+    roots.forEach(function (root) {
       var files = [];
       walk(fs, root.dir, files);
       files.forEach(function (f) {
@@ -122,14 +123,22 @@ var SBEPresets = (function () {
       if (a.cat !== b.cat) return a.cat < b.cat ? -1 : 1;
       return a.name.toLowerCase() < b.name.toLowerCase() ? -1 : 1;
     });
-    return { error: null, presets: presets };
+    return { error: null, roots: roots, presets: presets };
+  }
+
+  function currentRoots() {
+    var nd = node();
+    return nd ? findRoots(nd.require("fs"), nd.process.env) : null;
   }
 
   function get(forceRescan) {
     if (!forceRescan) {
       try {
         var cached = JSON.parse(localStorage.getItem(CACHE_KEY));
-        if (cached && cached.presets && cached.presets.length) return cached;
+        var roots = currentRoots();
+        // Rescan when an Adobe upgrade moved the preset folders.
+        var fresh = !roots || JSON.stringify(cached.roots) === JSON.stringify(roots);
+        if (cached && cached.presets && cached.presets.length && fresh) return cached;
       } catch (e) { /* rescan */ }
     }
     var result = scan();
@@ -137,5 +146,25 @@ var SBEPresets = (function () {
     return result;
   }
 
-  return { get: get };
+  // Map a saved preset path from an older install onto the current one.
+  // Returns the path unchanged if it exists, the remapped path, or null.
+  function resolve(path) {
+    var nd = node();
+    if (!nd || !path) return path;
+    var fs = nd.require("fs");
+    if (fs.existsSync(path)) return path;
+    var roots = findRoots(fs, nd.process.env);
+    var m = path.match(/\\MediaIO\\systempresets\\(.+)$/i);
+    var kind = "system";
+    if (!m) { m = path.match(/\\Adobe Media Encoder\\[\d.]+\\Presets\\(.+)$/i); kind = "user"; }
+    if (!m) return null;
+    for (var i = 0; i < roots.length; i++) {
+      if (roots[i].kind !== kind) continue;
+      var cand = roots[i].dir + "\\" + m[1];
+      if (fs.existsSync(cand)) return cand;
+    }
+    return null;
+  }
+
+  return { get: get, resolve: resolve };
 })();
