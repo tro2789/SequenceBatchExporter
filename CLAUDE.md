@@ -52,6 +52,14 @@ most recently focused Project view and is empty when focus is on the timeline.
 CEP cannot add native context-menu entries or receive Project-panel drags,
 so this button is the ceiling for "use what's highlighted".
 
+- **Update check** — `js/update-check.js`, configured by `data-repo` and
+  `data-url` on its script tag. Once a day it compares
+  `ExtensionBundleVersion` (read from `CSXS/manifest.xml`) with the latest
+  GitHub release tag and shows a dismissible notice that opens the Gumroad
+  listing. The same file is copied into SBE, Spec Check and A/B Toggle; keep the
+  copies identical. A release is only "out" once the GitHub release exists,
+  so tag names must stay `v<version>`.
+
 ## Preset scanning (js/presets.js) — hard-won facts
 
 - System presets: `C:\Program Files\Adobe\Adobe Premiere Pro <year>\MediaIO\systempresets`

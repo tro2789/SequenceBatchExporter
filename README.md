@@ -105,6 +105,14 @@ Notes:
 - If a queue job errors with "preset not found", the `.epr` path moved —
   re-add it in the profile.
 
+## Update check
+
+When the panel opens, it checks for a new version one time each day. It sends
+one request to the GitHub API (`api.github.com/repos/tro2789/SequenceBatchExporter/releases/latest`).
+GitHub can see your IP address. The panel sends no other data. If a new
+version is available, a notice shows at the top of the panel. Click the notice
+to open the download page. Click the x to hide the notice until the next version.
+
 ## Support
 
 Sequence Batch Exporter is free and stays free. If it saves you an export
